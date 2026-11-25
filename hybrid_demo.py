@@ -1,12 +1,12 @@
-"""Demo hybride : graphique en pixels + sous-titres en texte natif.
+"""Hybrid demo: pixel graphics + subtitles as native text.
 
-Scenario synthetique (aucune video requise), resolution native 304x256 :
-- une balle rebondissante en PIXELS (sparse, delta + skip-black) ;
-- un titre fixe + des sous-titres en TEXTE NATIF 0x37 (1 commande chacun).
+Synthetic scenario (no video needed), native 304x256 resolution:
+- a bouncing ball in PIXELS (sparse, delta + skip-black);
+- a fixed title + subtitles in NATIVE 0x37 TEXT (1 command each).
 
-But : mesurer le gain de l'hybride vs tout-pixels (cf. stream.py sur
-sparse_dark.mp4 : 4.36 img/s) et valider l'architecture cible :
-traduction live -> texte natif, retour visuel -> pixels epars.
+Goal: measure the hybrid gain vs all-pixel (see stream.py on
+sparse_dark.mp4: 4.36 fps) and validate the target architecture:
+live translation -> native text, visual feedback -> sparse pixels.
 """
 
 import argparse
@@ -19,10 +19,10 @@ from convert import plan_tiles
 from transport_emu import CANVAS_H, CANVAS_W, EmuGlasses
 
 SUBS = [
-    (0.0, 3.0, "Bonjour, ceci est un sous-titre."),
-    (3.0, 6.0, "Envoye en texte natif, pas en pixels."),
-    (6.0, 9.0, "Cout : ~50 octets par phrase."),
-    (9.0, 12.0, "La balle, elle, est en pixels."),
+    (0.0, 3.0, "Hello, this is a subtitle."),
+    (3.0, 6.0, "Sent as native text, not pixels."),
+    (6.0, 9.0, "Cost: ~50 bytes per line."),
+    (9.0, 12.0, "The ball is pixels, though."),
 ]
 SUB_BAND = (0, 208, 304, 40)  # x, y, w, h
 BALL_R = 15
@@ -45,7 +45,7 @@ def sub_at(t):
 
 
 def main():
-    p = argparse.ArgumentParser(description="Demo hybride pixels + texte natif")
+    p = argparse.ArgumentParser(description="Hybrid demo: pixels + native text")
     p.add_argument("--seconds", type=float, default=12.0)
     p.add_argument("--src-fps", type=float, default=15.0)
     p.add_argument("--tile", type=int, default=32)
@@ -64,7 +64,7 @@ def main():
                      time_scale=args.time_scale, headless=args.headless,
                      show_scale=args.show_scale, record_path=args.record)
     emu.clear_all()
-    emu.send_text(8, 20, "HYBRIDE: balle=px, sous-titres=txt")
+    emu.send_text(8, 20, "HYBRID: ball=px, subtitles=txt")
     prev = {}
     cur_sub = None
     n = int(args.seconds * args.src_fps)
@@ -73,7 +73,7 @@ def main():
         for i in range(n):
             t = i / args.src_fps
             sub = sub_at(t)
-            if sub != cur_sub:  # sous-titre : 1 clear + 1 texte natif
+            if sub != cur_sub:  # subtitle: 1 clear + 1 native text
                 emu.clear_tile(*SUB_BAND)
                 emu.send_text(8, 232, sub)
                 cur_sub = sub
@@ -91,9 +91,9 @@ def main():
             emu.frames += 1
             fps = emu.frames / emu.sim_time
             overlay = [
-                "HYBRIDE 304x256 px+titre natif",
+                "HYBRID 304x256 px+native txt",
                 f"sim: {fps:.1f} fps | {emu.sim_time / emu.frames * 1000:.0f} ms/f",
-                f"px:{n_send}S+{n_clear}C txt:{emu.texts} | {emu.sim_bytes / 1024:.1f} Ko",
+                f"px:{n_send}S+{n_clear}C txt:{emu.texts} | {emu.sim_bytes / 1024:.1f} KB",
             ]
             if not emu.render(overlay, emu.sim_time - sim_before):
                 break
@@ -103,11 +103,11 @@ def main():
     finally:
         s = emu.summary()
         emu.close()
-    print("\n=== BILAN HYBRIDE ===")
-    print(f"frames={s['frames']}  tuiles_px={s['tiles']}  textes={s['texts']}  "
-          f"octets={s['bytes']} ({s['bytes'] / 1024:.1f} Ko)")
-    print(f"temps simule={s['sim_time']:.1f}s -> {s['sim_fps']:.2f} img/s, "
-          f"latence ~{s['sim_latency_ms']:.0f} ms/frame (mur={s['wall_time']:.1f}s)")
+    print("\n=== HYBRID SUMMARY ===")
+    print(f"frames={s['frames']}  px_tiles={s['tiles']}  texts={s['texts']}  "
+          f"bytes={s['bytes']} ({s['bytes'] / 1024:.1f} KB)")
+    print(f"simulated time={s['sim_time']:.1f}s -> {s['sim_fps']:.2f} fps, "
+          f"latency ~{s['sim_latency_ms']:.0f} ms/frame (wall={s['wall_time']:.1f}s)")
 
 
 if __name__ == "__main__":

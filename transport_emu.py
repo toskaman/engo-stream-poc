@@ -1,11 +1,11 @@
-"""Emulateur des lunettes ENGO/ActiveLook + simulation du transport BLE.
+"""ENGO/ActiveLook glasses emulator + BLE transport simulation.
 
-- Canvas 304x256 1-bit (resolution reelle du HUD).
-- Simulation du debit BLE : chaque tuile envoyee coute
+- 304x256 1-bit canvas (the real HUD resolution).
+- BLE throughput simulation: each sent tile costs
       len(payload)/throughput + n_chunks * chunk_ms + cmd_ms
-  (comptabilise en temps simule ; ralenti aussi le temps reel via time_scale).
-- Affichage temps reel (cv2) + enregistrement optionnel de ce que
-  verraient les lunettes (avec le pacing simule, a 10 img/s).
+  (counted as simulated time; also slows wall time via time_scale).
+- Realtime display (cv2) + optional recording of what the
+  glasses would show (with simulated pacing, at 10 fps).
 """
 
 import time
@@ -29,7 +29,7 @@ class EmuGlasses:
         self.headless = headless
         self.show_scale = show_scale
         self.canvas = np.zeros((CANVAS_H, CANVAS_W), dtype=np.uint8)
-        # Stats (temps simule = prediction materiel reel)
+        # Stats (simulated time = real-hardware prediction)
         self.sim_time = 0.0
         self.sim_bytes = 0
         self.sim_chunks = 0
@@ -44,7 +44,7 @@ class EmuGlasses:
                 record_path, cv2.VideoWriter_fourcc(*"mp4v"), 10, (CANVAS_W, CANVAS_H))
 
     def send_tile(self, x, y, w, h, payload: bytes):
-        """Simule l'envoi BLE d'une tuile imgStream puis la dessine sur le canvas."""
+        """Simulate the BLE send of an imgStream tile, then draw it on the canvas."""
         n = chunk_count(len(payload), self.mtu_payload)
         dt = len(payload) / self.throughput + n * self.chunk_s + self.cmd_s
         self.sim_time += dt
@@ -58,7 +58,7 @@ class EmuGlasses:
         self.canvas[y:y + h, x:x + w] = bits * 255
 
     def clear_all(self):
-        """Efface tout l'ecran (commande CLEAR, ~5 octets)."""
+        """Clear the whole screen (CLEAR command, ~5 bytes)."""
         dt = 5 / self.throughput + self.cmd_s
         self.sim_time += dt
         self.sim_bytes += 5
@@ -68,7 +68,7 @@ class EmuGlasses:
         self.canvas[:] = 0
 
     def send_text(self, x, y, text):
-        """Envoie un texte natif 0x37 (cout reel : ~20o + texte, 1 commande)."""
+        """Send native 0x37 text (real cost: ~20B + text, 1 command)."""
         n = 20 + len(text.encode("ascii", errors="replace"))
         dt = n / self.throughput + self.cmd_s
         self.sim_time += dt
@@ -81,8 +81,8 @@ class EmuGlasses:
                     0.45, 255, 1, cv2.LINE_8)
 
     def clear_tile(self, x, y, w, h):
-        """Efface une zone (modelise comme une commande seule, sans payload :
-        equivalent suppose a un fillRect/clear natif du firmware)."""
+        """Erase an area (modeled as a single command with no payload,
+        the assumed equivalent of a native firmware fillRect/clear)."""
         self.sim_time += self.cmd_s
         self.sim_chunks += 1
         self.tiles += 1
@@ -104,7 +104,7 @@ class EmuGlasses:
         for i, line in enumerate(overlay_lines):
             cv2.putText(view, line, (8, 20 + i * 18), cv2.FONT_HERSHEY_SIMPLEX,
                         0.5, (0, 255, 0), 1, cv2.LINE_AA)
-        cv2.imshow("ENGO emulator - q pour quitter", view)
+        cv2.imshow("ENGO emulator - q to quit", view)
         return (cv2.waitKey(1) & 0xFF) != ord("q")
 
     def summary(self):

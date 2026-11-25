@@ -1,6 +1,6 @@
-"""Genere deux demos eparses : fond noir et fond blanc (balle + texte + barre).
+"""Generate two sparse demos: black and white backgrounds (ball + text + bar).
 
-But : prouver le gain du skip-black OLED et de l'auto-inversion.
+Goal: prove the OLED skip-black gain and the auto-invert payoff.
 """
 
 import cv2
@@ -17,12 +17,12 @@ def gen(path, bg, fg):
         bx = int(W / 2 + (W / 2 - 60) * np.sin(2 * np.pi * i / n * 3))
         by = int(H / 2 + (H / 2 - 120) * abs(np.sin(2 * np.pi * i / n * 5)))
         cv2.circle(img, (bx, by), 30, fg, -1)
-        cv2.putText(img, "SOUS-TITRE EXEMPLE : bonjour les lunettes", (30, 60),
+        cv2.putText(img, "SAMPLE SUBTITLE: hello glasses", (30, 60),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.9, fg, 2)
         cv2.rectangle(img, (30, H - 50), (30 + int((W - 60) * i / n), H - 30), fg, -1)
         out.write(img)
     out.release()
-    print(f"Generee : {path}")
+    print(f"Generated: {path}")
 
 
 if __name__ == "__main__":

@@ -1,52 +1,63 @@
-# Validation materielle — lunettes ENGO / ActiveLook
+# Hardware validation - ENGO / ActiveLook glasses
 
-Ce guide valide le protocole filaire sur de vraies lunettes, etape par etape.
-Sans cette validation, tout reste simule : c'est LE passage oblige avant le live.
+This guide validates the wire protocol on real glasses, step by step.
+Without this validation everything stays simulated: it is THE required
+step before going live.
 
-## Pre-requis
+## Prerequisites
 
-- Lunettes chargees et allumees (pres du PC, < 3 m).
-- **App officielle ENGO / ActiveLook fermee ou deconnectee** : une seule
-  connexion BLE a la fois, sinon le script ne pourra pas se connecter.
-- Bluetooth du PC actif. `pip install -r requirements.txt` fait.
+- Glasses charged and powered on (near the PC, < 3 m).
+- **Official ENGO / ActiveLook app closed or disconnected**: a single
+  BLE connection at a time, otherwise the script cannot connect.
+- PC Bluetooth on. `pip install -r requirements.txt` done.
 
 ## Procedure (5 minutes)
 
 ```powershell
-cd Z:\Hackatons\OpenBridge\engo-stream-poc
 python ble_validate.py
 ```
 
-Le script scanne, se connecte aux lunettes `A.LooK*`, puis enchaine 7 etapes :
-CLEAR, replay de la demo texte officielle, textes a positions variees
-(cartographie X/Y), puis un damier 32x32 en imgStream. A chaque etape, mets
-les lunettes et reponds a la question (o/n + ce que tu vois).
+The script scans, connects to the `A.LooK*` glasses, then runs 7 steps:
+CLEAR, replay of the official text demo, texts at various positions
+(X/Y mapping), then a 32x32 checkerboard via imgStream. At each step,
+wear the glasses and answer the question (y/n + what you see).
 
-Tout est journalise dans `validation_log.txt` (trames + observations +
-notifications des lunettes) : envoie-moi ce fichier + tes reponses.
+Everything is logged to `validation_log.txt` (frames + observations +
+glasses notifications): send back that file plus your answers.
 
-## Lecture des resultats
+## Reading the results
 
 | Observation | Conclusion |
 |---|---|
-| Etapes 1-2 OK | Connexion + framing FF..AA valides |
-| Etapes 3-6 placees correctement | Commande texte 0x37 validee, X/Y confirmes |
-| Etape 7 damier visible | imgStream valide, le streaming pixels est ouvert |
-| Etape 7 rien, mais 1-6 OK | Texte natif OK, format image a ajuster (candidat B) |
-| Rien des l'etape 1 | Connexion refusee / autre revision protocole -> dump GATT |
+| Steps 1-2 OK | Connection + FF..AA framing valid |
+| Steps 3-6 placed correctly | Text command 0x37 valid, X/Y confirmed |
+| Step 7 checkerboard visible | imgStream valid, pixel streaming is open |
+| Step 7 blank, but 1-6 OK | Native text OK, image format needs work (candidate B) |
+| Nothing from step 1 | Connection refused / other protocol revision -> GATT dump |
 
-## Secours : dump GATT
+## Fallback: GATT dump
 
 ```powershell
 python stream.py --transport ble --ble-discover
 python stream.py --transport ble --ble-dump <MAC>
 ```
 
-Compare les UUIDs avec ceux de `protocol.py`. Si differents (ENGO 3 =
-revision recente ?), envoie-moi le dump pour adapter.
+Compare the UUIDs with `protocol.py`. If they differ (ENGO 3 =
+a newer revision?), send the dump so it can be adapted.
 
-## Apres validation
+## After validation
 
-- Texte OK -> on branche la chaine traduction live (Whisper -> texte natif).
-- Image OK -> on calibre `--throughput` / `--cmd-ms` sur mesures reelles,
-  puis streaming hybride en direct.
+- Text OK -> wire the live translation chain (Whisper -> native text).
+- Image OK -> calibrate `--throughput` / `--cmd-ms` on real measurements,
+  then live hybrid streaming.
+
+## Version francaise
+
+Meme procedure en francais : charge et allume les lunettes, ferme l'app
+officielle (une seule connexion BLE a la fois), puis lance
+`python ble_validate.py`. Le script enchaine 7 etapes (effacement, demo
+texte officielle, textes positionnes, damier imgStream) : mets les
+lunettes et reponds a chaque question (o/n + ce que tu vois). Tout est
+journalise dans `validation_log.txt`. Si rien ne s'affiche des l'etape
+1, fais un dump GATT (`--ble-discover` / `--ble-dump`) et compare les
+UUIDs avec `protocol.py`.

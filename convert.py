@@ -1,4 +1,4 @@
-"""Conversion frame video -> bitmap 1-bit + decoupage en tuiles."""
+"""Video frame -> 1-bit bitmap conversion + tile splitting."""
 
 import cv2
 import numpy as np
@@ -11,16 +11,16 @@ BAYER4 = np.array([
 ], dtype=np.float32) / 16.0
 
 
-BLACK = object()  # sentinelle : tuile connue comme noire a l'ecran
+BLACK = object()  # sentinel: tile known to be black on screen
 
 
 def to_1bit(bgr, w: int, h: int, mode: str = "bayer", invert: bool = False,
             black_cut: float = 0.0, thresh_level: float = 0.5):
-    """Redimensionne en w×h et binarise. Retourne un tableau bool (h, w).
+    """Resize to w x h and binarize. Returns a bool array (h, w).
 
-    invert : fond clair -> fond noir (maximise les tuiles noires sur OLED).
-    black_cut : les gris sous ce seuil deviennent noir pur AVANT dithering
-                (tue le bruit de dither dans les zones sombres -> tuiles skippables).
+    invert: light background -> black background (maximizes black tiles on OLED).
+    black_cut: grays below this become pure black BEFORE dithering
+               (kills dither noise in dark areas -> skippable tiles).
     """
     small = cv2.resize(bgr, (w, h), interpolation=cv2.INTER_AREA)
     gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY).astype(np.float32) / 255.0
@@ -32,7 +32,7 @@ def to_1bit(bgr, w: int, h: int, mode: str = "bayer", invert: bool = False,
         return gray > thresh_level
     if mode == "fs":
         return _floyd_steinberg(gray)
-    # Bayer 4x4 ordonne (rapide, temps reel)
+    # Ordered 4x4 Bayer (fast, realtime)
     t = BAYER4[np.arange(h)[:, None] % 4, np.arange(w)[None, :] % 4]
     return gray > t
 
@@ -59,9 +59,9 @@ def _floyd_steinberg(g):
 
 
 def extract_tiles(bw, tile: int = 32):
-    """Decoupe le bitmap en tuiles (tx, ty, tw, th, payload_packed).
+    """Split the bitmap into tiles (tx, ty, tw, th, packed_payload).
 
-    w et h doivent etre des multiples de `tile` (garanti par stream.py).
+    w and h should be multiples of `tile` (guaranteed by stream.py).
     """
     h, w = bw.shape
     out = []
@@ -75,15 +75,15 @@ def extract_tiles(bw, tile: int = 32):
 
 
 def plan_tiles(bw, tile, ox, oy, prev, mode="delta", skip_black=False, crop=False):
-    """Planifie les operations d'envoi pour une frame.
+    """Plan the send operations for one frame.
 
-    Retourne (ops, n_total) avec ops = ('send'|'clear', ax, ay, tw, th, payload|None).
-    - mode='delta' : ne renvoie que les tuiles modifiees.
-    - skip_black : ne renvoie jamais une tuile noire deja noire a l'ecran ;
-      une tuile qui DEVIENT noire recoit un 'clear' (pas cher : commande seule).
-    - crop : restreint au bbox du contenu non-noir ; les tuiles sorties
-      du cadre sont 'clear' (evite les pixels fantomes).
-    Hypothese : ecran efface au depart (cle manquante dans prev = noir).
+    Returns (ops, n_total) with ops = ('send'|'clear', ax, ay, tw, th, payload|None).
+    - mode='delta': only resend changed tiles.
+    - skip_black: never resend a tile that is already black on screen;
+      a tile that TURNS black gets a 'clear' (cheap: command only).
+    - crop: restrict to the non-black content bbox; tiles falling out
+      of frame get a 'clear' (avoids ghost pixels).
+    Assumption: screen cleared at start (missing key in prev = black).
     """
     h, w = bw.shape
     if crop:

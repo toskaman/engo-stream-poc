@@ -1,4 +1,4 @@
-"""Compare visuellement bayer vs thresh sur une frame de demo (PNG, pas de video)."""
+"""Visually compare bayer vs thresh on a demo frame (PNG, no video)."""
 
 import cv2
 import numpy as np
@@ -18,4 +18,4 @@ cv2.putText(combo, "BAYER", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, 128, 2)
 cv2.putText(combo, "THRESH", (combo.shape[1] // 2 + 10, 30),
             cv2.FONT_HERSHEY_SIMPLEX, 1, 128, 2)
 cv2.imwrite("snap_dither_compare.png", combo)
-print("blancs: bayer=%.1f%% thresh=%.1f%%" % (a.mean() * 100, b.mean() * 100))
+print("white: bayer=%.1f%% thresh=%.1f%%" % (a.mean() * 100, b.mean() * 100))

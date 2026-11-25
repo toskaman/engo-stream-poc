@@ -1,13 +1,13 @@
-"""Transport BLE reel vers les lunettes (phase 2, apres validation emulee).
+"""Real BLE transport to the glasses (phase 2, after emulated validation).
 
-Usage :
+Usage:
   1. python stream.py --transport ble --ble-discover
-     -> liste les lunettes visibles et leurs services/caracteristiques.
-  2. Identifier la caracteristique de commande (ecriture) avec nRF Connect
-     si besoin, valider le format imgStream (cf. protocol.py).
+     -> list visible glasses and their services/characteristics.
+  2. Identify the command (write) characteristic with nRF Connect
+     if needed, validate the imgStream format (see protocol.py).
   3. python stream.py --transport ble --ble-address <MAC> --ble-write-uuid <UUID> ...
 
-Necessite : pip install bleak
+Requires: pip install bleak
 """
 
 import asyncio
@@ -18,17 +18,17 @@ from protocol import AL_RX, AL_TX, ADV_PREFIX, build_imgstream, chunk_frame
 
 
 async def discover(timeout=8.0):
-    print(f"Scan BLE ({timeout}s)...")
+    print(f"BLE scan ({timeout}s)...")
     devices = await BleakScanner.discover(timeout=timeout)
     for d in devices:
-        mark = "  <-- LUNETTES ?" if (d.name or "").startswith(ADV_PREFIX) else ""
+        mark = "  <-- GLASSES?" if (d.name or "").startswith(ADV_PREFIX) else ""
         print(f"  {d.address}  {d.name}  RSSI={d.rssi}{mark}")
     return devices
 
 
 async def dump_services(address):
     async with BleakClient(address) as client:
-        print(f"Connecte a {address}. Services :")
+        print(f"Connected to {address}. Services:")
         for svc in client.services:
             print(f"  Service {svc.uuid}  {svc.description}")
             for ch in svc.characteristics:
@@ -53,21 +53,21 @@ class BleGlasses:
         self.client = BleakClient(self.address)
         await self.client.connect()
         try:
-            mtu = self.client.mtu_size  # negocié par l'OS (WinRT: lecture seule)
+            mtu = self.client.mtu_size  # negotiated by the OS (WinRT: read-only)
             self.mtu_payload = max(20, mtu - 3)
-            print(f"Connecte a {self.address} (MTU={mtu}, RX={self.write_uuid})")
+            print(f"Connected to {self.address} (MTU={mtu}, RX={self.write_uuid})")
         except Exception:
-            print(f"Connecte a {self.address} (MTU inconnu, chunks de {self.mtu_payload}o)")
+            print(f"Connected to {self.address} (MTU unknown, {self.mtu_payload}B chunks)")
         if subscribe:
             try:
                 await self.client.start_notify(self.notify_uuid, self._on_notify)
-                print(f"Notifications actives sur {self.notify_uuid}")
+                print(f"Notifications enabled on {self.notify_uuid}")
             except Exception as e:
-                print(f"Notifications impossibles sur {self.notify_uuid} : {e}")
+                print(f"Notifications unavailable on {self.notify_uuid}: {e}")
 
     def _on_notify(self, _handle, data: bytearray):
         self.rx_log.append(bytes(data))
-        print(f"  [TX lunettes] {bytes(data).hex(' ')}")
+        print(f"  [TX glasses] {bytes(data).hex(' ')}")
 
     async def write_frame(self, frame: bytes):
         for chunk in chunk_frame(frame, self.mtu_payload):
@@ -86,11 +86,11 @@ class BleGlasses:
         self.tiles += 1
 
     async def clear_tile(self, x, y, w, h):
-        # Repli honnete : pas de fillRect natif confirme -> on envoie une tuile noire.
-        # Si le firmware expose un rectangle plein natif, le brancher ici (1 commande).
+        # Honest fallback: no confirmed native fillRect, so send a black tile.
+        # If the firmware exposes a native filled rectangle, wire it here (1 command).
         await self.send_tile(x, y, w, h, bytes((w // 8) * h))
 
     async def disconnect(self):
         if self.client:
             await self.client.disconnect()
-            print("Deconnecte.")
+            print("Disconnected.")
